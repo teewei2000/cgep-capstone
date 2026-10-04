@@ -8,6 +8,7 @@
 tfplan
 *.tfplan
 crash.log
+*.tfplan.json
 
 # Lambda build
 terraform/lambda/handler.zip
@@ -15,3 +16,4 @@ terraform/lambda/handler.zip
 # Local
 evidence/
 .DS_Store
+*.tfplan.json

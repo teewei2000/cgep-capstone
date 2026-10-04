@@ -24,3 +24,8 @@ output "vpc_id" {
 output "private_subnet_ids" {
   value = aws_subnet.private[*].id
 }
+
+output "evidence_bucket_name" {
+  description = "Name of the S3 evidence vault"
+  value       = aws_s3_bucket.evidence.bucket
+}
