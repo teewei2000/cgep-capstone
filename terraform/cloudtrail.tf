@@ -21,6 +21,14 @@ resource "aws_s3_bucket" "trail" {
   }
 }
 
+resource "aws_s3_bucket_versioning" "trail" {
+  bucket = aws_s3_bucket.trail.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "trail" {
   bucket = aws_s3_bucket.trail.id
 
