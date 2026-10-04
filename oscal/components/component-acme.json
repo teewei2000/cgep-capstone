@@ -216,7 +216,7 @@
                 ]
               },
               {
-                "uuid": "b84e1f63-7a25-4c90-d536-2e8f1b947a06",
+                "uuid": "7a70d3d1-b00c-4ec9-89ed-dd1e82b451d5",
                 "control-id": "au-2",
                 "description": "Closes GAP-08 (HIPAA 164.312(b)). API Gateway access logging is enabled through the default stage and a dedicated CloudWatch log group. AWS management activity is additionally recorded through the multi-region CloudTrail trail with log-file validation enabled. The policy gap08_api_logging.rego verifies the API Gateway access logging configuration.",
                 "props": [

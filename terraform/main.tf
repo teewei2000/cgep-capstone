@@ -49,7 +49,7 @@ resource "aws_kms_key" "acme" {
 }
 
 resource "aws_kms_alias" "acme" {
-  name          = "alias/${local.name_prefix}"
+  name          = "alias/${local.name_prefix}-${local.suffix}"
   target_key_id = aws_kms_key.acme.key_id
 }
 
@@ -467,7 +467,7 @@ resource "aws_apigatewayv2_route" "intake" {
 
 # Create a CloudWatch log group (for GAP-08)
 resource "aws_cloudwatch_log_group" "api" {
-  name              = "/aws/apigateway/${local.name_prefix}"
+  name              = "/aws/apigateway/${local.name_prefix}-${local.suffix}"
   retention_in_days = 30
 }
 

@@ -106,7 +106,7 @@ resource "aws_s3_bucket_policy" "trail" {
 }
 
 resource "aws_cloudtrail" "mgmt" {
-  name                          = "cgep-capstone-mgmt"
+  name                          = "${local.name_prefix}-mgmt-${local.suffix}"
   s3_bucket_name                = aws_s3_bucket.trail.id
   is_multi_region_trail         = true
   include_global_service_events = true
