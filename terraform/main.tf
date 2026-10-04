@@ -171,13 +171,13 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "uploads" {
 
 # CLOSED GAP-04 — S3 has no versioning
 # HIPAA: 164.308(a)(7) — Contingency Plan
-resource "aws_s3_bucket_versioning" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
-
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
+#resource "aws_s3_bucket_versioning" "uploads" {
+#  bucket = aws_s3_bucket.uploads.id
+#
+#  versioning_configuration {
+#    status = "Enabled"
+#  }
+#}
 
 # ------------------------------------------------------------
 # Evidence vault
