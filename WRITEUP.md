@@ -87,7 +87,22 @@ The submitted evidence bundle was independently verified by:
 * Verifying the Cosign signature using the GitHub Actions OIDC identity.
 * Confirming Object Lock retention on the evidence bundle, SHA-256 digest and Cosign signature bundle.
 
-This provides an auditable chain from the CI run to the immutable evidence stored in the vault.
+Cosign verification returned Verified OK, and the recomputed SHA-256 digest matched the stored digest. This provides an auditable chain from the CI run to the signed evidence stored in the evidence vault.
+
+## OSCAL validation
+
+The OSCAL profile selects the NIST SP 800-53 Rev. 5 controls implemented by the component:
+
+SC-28 — Protection of Information at Rest
+SC-8 — Transmission and Confidentiality
+SC-7 — Boundary Protection
+CP-9 — System Backup
+AC-6 — Least Privilege
+AU-2 — Event Logging
+
+The component-definition contains seven implementation statements corresponding to GAP-01, GAP-02, GAP-03, GAP-04, GAP-05, GAP-07 and GAP-08. Each statement references actual Terraform resources and a signed evidence object.
+
+The OSCAL profile and component-definition were validated using OSCAL Trestle.
 
 ## Remaining limitations
 
