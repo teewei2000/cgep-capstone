@@ -17,3 +17,10 @@ terraform/lambda/handler.zip
 evidence/
 .DS_Store
 *.tfplan.json
+
+# Generated evidence / Terraform plan exports
+plan.json
+plan.txt
+conftest-results.json
+metadata.json
+terraform/tfplan.json

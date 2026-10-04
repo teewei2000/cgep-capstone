@@ -1,0 +1,254 @@
+{
+  "component-definition": {
+    "uuid": "b6e8f3c1-4a27-45d9-9c62-1f7b0e5a8436",
+    "metadata": {
+      "title": "Acme Health Patient Intake API - controlled system",
+      "last-modified": "2026-10-04T21:00:00.000000+02:00",
+      "version": "1.0.0",
+      "oscal-version": "1.2.3",
+      "parties": [
+        {
+          "uuid": "d2c4a7e9-8f31-46b5-a062-5e9c17d3b824",
+          "type": "organization",
+          "name": "Acme Health (CGE-P capstone)"
+        }
+      ]
+    },
+    "components": [
+      {
+        "uuid": "e5a91c37-6d24-4b80-9f53-2a7c18d4e906",
+        "type": "software",
+        "title": "patient-intake-api",
+        "description": "Telehealth Patient Intake API consisting of API Gateway HTTP API, Lambda handler, DynamoDB intake table, S3 uploads bucket, and supporting security and evidence infrastructure. The Terraform compliance baseline closes GAP-01 through GAP-05, GAP-07, and GAP-08 under the HIPAA Security Rule.",
+        "purpose": "Collect and store patient intake submissions containing PHI with audit-defensible technical safeguards.",
+        "responsible-roles": [
+          {
+            "role-id": "provider",
+            "party-uuids": [
+              "d2c4a7e9-8f31-46b5-a062-5e9c17d3b824"
+            ]
+          }
+        ],
+        "control-implementations": [
+          {
+            "uuid": "a73d5f28-91c4-4e60-b827-3f1a9c6d5042",
+            "source": "https://raw.githubusercontent.com/usnistgov/oscal-content/main/nist.gov/SP800-53/rev5/json/NIST_SP-800-53_rev5_catalog.json",
+            "description": "NIST SP 800-53 Rev. 5 controls implemented by the Terraform security baseline. Each requirement identifies the corresponding HIPAA Security Rule provision, the CGE-P gap it closes, the Terraform resources implementing the safeguard, and signed CI evidence.",
+            "implemented-requirements": [
+              {
+                "uuid": "c18e4a72-5b39-46d1-8f20-7a3c9e15b604",
+                "control-id": "sc-28",
+                "description": "Closes GAP-01 (HIPAA 164.312(a)(2)(iv)). Patient-uploaded PHI is encrypted at rest using the Acme Health customer-managed KMS key. The S3 uploads bucket uses aws:kms encryption with aws_kms_key.acme, with bucket-key optimization enabled. The policy gap01_s3_cmk_encryption.rego prevents the baseline from reverting to SSE-S3.",
+                "props": [
+                  {
+                    "name": "implementation-status",
+                    "value": "implemented"
+                  },
+                  {
+                    "name": "gap-id",
+                    "value": "GAP-01"
+                  },
+                  {
+                    "name": "hipaa-control-id",
+                    "value": "164.312(a)(2)(iv)"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "aws_kms_key.acme; aws_s3_bucket_server_side_encryption_configuration.uploads"
+                  }
+                ],
+                "links": [
+                  {
+                    "rel": "evidence",
+                    "href": "s3://cgep-capstone-evidence-497f6467/capstone/runs/37212597897/evidence-37212597897-9eb7b54a0c07636ade0fd1a63baa77b0da672d79.tar.gz",
+                    "text": "CI evidence bundle signed with Cosign; signature bundle stored alongside the evidence."
+                  }
+                ]
+              },
+              {
+                "uuid": "f42b7c19-8e53-4d06-a931-5c27f0b86410",
+                "control-id": "sc-28",
+                "description": "Closes GAP-02 (HIPAA 164.312(a)(2)(iv)). The DynamoDB patient intake table uses server-side encryption with the Acme Health customer-managed KMS key rather than an AWS-owned key. The policy gap02_dynamodb_cmk_encryption.rego verifies the CMK reference.",
+                "props": [
+                  {
+                    "name": "implementation-status",
+                    "value": "implemented"
+                  },
+                  {
+                    "name": "gap-id",
+                    "value": "GAP-02"
+                  },
+                  {
+                    "name": "hipaa-control-id",
+                    "value": "164.312(a)(2)(iv)"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "aws_dynamodb_table.intake; aws_kms_key.acme"
+                  }
+                ],
+                "links": [
+                  {
+                    "rel": "evidence",
+                    "href": "s3://cgep-capstone-evidence-497f6467/capstone/runs/37212597897/evidence-37212597897-9eb7b54a0c07636ade0fd1a63baa77b0da672d79.tar.gz",
+                    "text": "CI evidence bundle signed with Cosign; signature bundle stored alongside the evidence."
+                  }
+                ]
+              },
+              {
+                "uuid": "8d61e3f5-2a94-4c70-b839-1f5e7a26d904",
+                "control-id": "sc-8",
+                "description": "Closes GAP-03 (HIPAA 164.312(e)(1)). The S3 uploads bucket denies all S3 actions when aws:SecureTransport is false, preventing non-TLS access to PHI. The policy gap03_s3_tls.rego verifies that the uploads bucket has the required TLS enforcement policy attached.",
+                "props": [
+                  {
+                    "name": "implementation-status",
+                    "value": "implemented"
+                  },
+                  {
+                    "name": "gap-id",
+                    "value": "GAP-03"
+                  },
+                  {
+                    "name": "hipaa-control-id",
+                    "value": "164.312(e)(1)"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "aws_s3_bucket_policy.uploads_tls"
+                  }
+                ],
+                "links": [
+                  {
+                    "rel": "evidence",
+                    "href": "s3://cgep-capstone-evidence-497f6467/capstone/runs/37212597897/evidence-37212597897-9eb7b54a0c07636ade0fd1a63baa77b0da672d79.tar.gz",
+                    "text": "CI evidence bundle signed with Cosign; signature bundle stored alongside the evidence."
+                  }
+                ]
+              },
+              {
+                "uuid": "5e29a7c4-6f81-4b30-9d52-c173e8a60427",
+                "control-id": "cp-9",
+                "description": "Closes GAP-04 (HIPAA 164.308(a)(7)). S3 versioning is enabled on the patient uploads bucket, allowing prior object versions to be recovered following accidental overwrite or deletion. The policy gap04_s3_versioning.rego verifies versioning on the relevant S3 bucket.",
+                "props": [
+                  {
+                    "name": "implementation-status",
+                    "value": "implemented"
+                  },
+                  {
+                    "name": "gap-id",
+                    "value": "GAP-04"
+                  },
+                  {
+                    "name": "hipaa-control-id",
+                    "value": "164.308(a)(7)"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "aws_s3_bucket_versioning.uploads"
+                  }
+                ],
+                "links": [
+                  {
+                    "rel": "evidence",
+                    "href": "s3://cgep-capstone-evidence-497f6467/capstone/runs/37212597897/evidence-37212597897-9eb7b54a0c07636ade0fd1a63baa77b0da672d79.tar.gz",
+                    "text": "CI evidence bundle signed with Cosign; signature bundle stored alongside the evidence."
+                  }
+                ]
+              },
+              {
+                "uuid": "7c45f1a9-3e82-4b67-a510-9d26e8c37415",
+                "control-id": "sc-7",
+                "description": "Closes GAP-05 (HIPAA 164.312(e)(1)). The patient intake Lambda function is deployed inside the starter VPC using private subnets and a dedicated security group. The workload uses VPC gateway endpoints for S3 and DynamoDB and does not require a public Lambda network interface. The policy gap05_lambda_vpc.rego verifies that the Lambda function has the expected private subnet and security-group configuration.",
+                "props": [
+                  {
+                    "name": "implementation-status",
+                    "value": "implemented"
+                  },
+                  {
+                    "name": "gap-id",
+                    "value": "GAP-05"
+                  },
+                  {
+                    "name": "hipaa-control-id",
+                    "value": "164.312(e)(1)"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "aws_lambda_function.intake; aws_security_group.lambda; aws_subnet.private"
+                  }
+                ],
+                "links": [
+                  {
+                    "rel": "evidence",
+                    "href": "s3://cgep-capstone-evidence-497f6467/capstone/runs/37212597897/evidence-37212597897-9eb7b54a0c07636ade0fd1a63baa77b0da672d79.tar.gz",
+                    "text": "CI evidence bundle signed with Cosign; signature bundle stored alongside the evidence."
+                  }
+                ]
+              },
+              {
+                "uuid": "9a36d2e8-5c71-4f04-b817-2e93a6d54028",
+                "control-id": "ac-6",
+                "description": "Closes GAP-07 (HIPAA 164.312(a)(1)). The Lambda execution role is restricted to the permissions required by the patient intake workload: DynamoDB PutItem on the intake table, S3 PutObject on the uploads bucket, and KMS decrypt/data-key operations on the Acme Health CMK. Resource-level scoping replaces the starter service-level wildcard permissions. The policy gap07_lambda_least_privilege.rego verifies resource-level IAM scoping.",
+                "props": [
+                  {
+                    "name": "implementation-status",
+                    "value": "implemented"
+                  },
+                  {
+                    "name": "gap-id",
+                    "value": "GAP-07"
+                  },
+                  {
+                    "name": "hipaa-control-id",
+                    "value": "164.312(a)(1)"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "aws_iam_role.lambda; aws_iam_role_policy.lambda_inline"
+                  }
+                ],
+                "links": [
+                  {
+                    "rel": "evidence",
+                    "href": "s3://cgep-capstone-evidence-497f6467/capstone/runs/37212597897/evidence-37212597897-9eb7b54a0c07636ade0fd1a63baa77b0da672d79.tar.gz",
+                    "text": "CI evidence bundle signed with Cosign; signature bundle stored alongside the evidence."
+                  }
+                ]
+              },
+              {
+                "uuid": "b84e1f63-7a25-4c90-d536-2e8f1b947a06",
+                "control-id": "au-2",
+                "description": "Closes GAP-08 (HIPAA 164.312(b)). API Gateway access logging is enabled through the default stage and a dedicated CloudWatch log group. AWS management activity is additionally recorded through the multi-region CloudTrail trail with log-file validation enabled. The policy gap08_api_logging.rego verifies the API Gateway access logging configuration.",
+                "props": [
+                  {
+                    "name": "implementation-status",
+                    "value": "implemented"
+                  },
+                  {
+                    "name": "gap-id",
+                    "value": "GAP-08"
+                  },
+                  {
+                    "name": "hipaa-control-id",
+                    "value": "164.312(b)"
+                  },
+                  {
+                    "name": "terraform-resource",
+                    "value": "aws_apigatewayv2_stage.default; aws_cloudwatch_log_group.api; aws_cloudtrail.mgmt"
+                  }
+                ],
+                "links": [
+                  {
+                    "rel": "evidence",
+                    "href": "s3://cgep-capstone-evidence-497f6467/capstone/runs/37212597897/evidence-37212597897-9eb7b54a0c07636ade0fd1a63baa77b0da672d79.tar.gz",
+                    "text": "CI evidence bundle signed with Cosign; signature bundle stored alongside the evidence."
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
