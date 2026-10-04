@@ -1,0 +1,281 @@
+name: CGE-P Capstone
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  TF_WORKING_DIR: terraform
+
+jobs:
+  capstone:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ------------------------------------------------------------
+      # Checkout
+      # ------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------
+      # AWS authentication via GitHub OIDC
+      # ------------------------------------------------------------
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ------------------------------------------------------------
+      # Terraform
+      # ------------------------------------------------------------
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.8
+          terraform_wrapper: false
+
+      # ------------------------------------------------------------
+      # OPA
+      # ------------------------------------------------------------
+      - name: Install OPA
+        run: |
+          curl -fsSL \
+            https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static \
+            -o /usr/local/bin/opa
+
+          chmod +x /usr/local/bin/opa
+
+          opa version
+
+      # ------------------------------------------------------------
+      # Conftest
+      # ------------------------------------------------------------
+      - name: Install Conftest
+        run: |
+          curl -fsSL \
+            https://github.com/open-policy-agent/conftest/releases/download/v0.65.0/conftest_0.65.0_Linux_x86_64.tar.gz \
+            | tar -xz -C /usr/local/bin conftest
+
+          conftest --version
+
+      # ------------------------------------------------------------
+      # Cosign
+      # ------------------------------------------------------------
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: v2.2.4
+
+      # ------------------------------------------------------------
+      # Prepare evidence directory
+      # ------------------------------------------------------------
+      - name: Prepare evidence directory
+        run: |
+          mkdir -p evidence
+
+      # ------------------------------------------------------------
+      # Terraform plan
+      # ------------------------------------------------------------
+      - name: Terraform plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          set -euo pipefail
+
+          terraform init -input=false
+
+          terraform fmt -check
+          terraform validate
+
+          terraform plan \
+            -out=tfplan \
+            -no-color \
+            | tee plan.txt
+
+          terraform show \
+            -json \
+            tfplan \
+            > plan.json
+
+      # ------------------------------------------------------------
+      # OPA unit tests
+      # ------------------------------------------------------------
+      - name: OPA unit tests
+        run: |
+          set -euo pipefail
+
+          opa test policy/ -v
+
+      # ------------------------------------------------------------
+      # Conftest policy gate
+      # ------------------------------------------------------------
+      - name: Conftest policy gate
+        id: conftest
+        run: |
+          set -euo pipefail
+
+          conftest test \
+            --policy policy \
+            --all-namespaces \
+            --output=json \
+            "$TF_WORKING_DIR/plan.json" \
+            > evidence/conftest-results.json || true
+
+          python3 - <<'PY'
+          import json
+          import sys
+
+          with open("evidence/conftest-results.json") as f:
+              results = json.load(f)
+
+          failures = sum(
+              len(result.get("failures") or [])
+              for result in results
+          )
+
+          warnings = sum(
+              len(result.get("warnings") or [])
+              for result in results
+          )
+
+          print(f"Conftest failures: {failures}")
+          print(f"Conftest warnings: {warnings}")
+
+          sys.exit(0 if failures == 0 else 1)
+          PY
+
+      # ------------------------------------------------------------
+      # Terraform apply
+      #
+      # Only runs after:
+      # - Terraform plan succeeds
+      # - OPA tests succeed
+      # - Conftest succeeds
+      #
+      # ------------------------------------------------------------
+      - name: Terraform apply
+        if: |
+          steps.conftest.outcome == 'success' &&
+          (
+            github.event_name == 'push'
+          ) &&
+          github.ref == 'refs/heads/main'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          set -euo pipefail
+
+          terraform apply \
+            -auto-approve \
+            tfplan
+
+      # ------------------------------------------------------------
+      # Copy Terraform evidence
+      # ------------------------------------------------------------
+      - name: Copy Terraform evidence
+        if: always()
+        run: |
+          set -euo pipefail
+
+          if [ -f "$TF_WORKING_DIR/plan.json" ]; then
+            cp "$TF_WORKING_DIR/plan.json" evidence/plan.json
+          fi
+
+          if [ -f "$TF_WORKING_DIR/plan.txt" ]; then
+            cp "$TF_WORKING_DIR/plan.txt" evidence/plan.txt
+          fi
+
+      # ------------------------------------------------------------
+      # Generate evidence metadata
+      # ------------------------------------------------------------
+      - name: Generate evidence metadata
+        if: always()
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_NUMBER: ${{ github.run_number }}
+          SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          cat > evidence/metadata.json <<EOF
+          {
+            "project": "acme-health-intake",
+            "workflow": "capstone",
+            "run_id": "${RUN_ID}",
+            "run_number": "${RUN_NUMBER}",
+            "commit": "${SHA}",
+            "event": "${EVENT}",
+            "ref": "${REF}",
+            "terraform_directory": "${TF_WORKING_DIR}"
+          }
+          EOF
+
+      # ------------------------------------------------------------
+      # Bundle + sign + upload evidence
+      # ------------------------------------------------------------
+      - name: Bundle and sign evidence
+        id: sign
+        if: always()
+        env:
+          RUN_ID: ${{ github.run_id }}
+          SHA: ${{ github.sha }}
+          VAULT: ${{ vars.EVIDENCE_VAULT }}
+        run: |
+          set -euo pipefail
+
+          BUNDLE="evidence-${RUN_ID}-${SHA}.tar.gz"
+
+          tar czf "${BUNDLE}" evidence/
+
+          shasum -a 256 "${BUNDLE}" \
+            | awk '{print $1}' \
+            > "${BUNDLE}.sha256"
+
+          cosign sign-blob \
+            --yes \
+            --bundle "${BUNDLE}.sig.bundle" \
+            "${BUNDLE}"
+
+          KEY_PREFIX="capstone/runs/${RUN_ID}"
+
+          aws s3 cp \
+            "${BUNDLE}" \
+            "s3://${VAULT}/${KEY_PREFIX}/${BUNDLE}"
+
+          aws s3 cp \
+            "${BUNDLE}.sha256" \
+            "s3://${VAULT}/${KEY_PREFIX}/${BUNDLE}.sha256"
+
+          aws s3 cp \
+            "${BUNDLE}.sig.bundle" \
+            "s3://${VAULT}/${KEY_PREFIX}/${BUNDLE}.sig.bundle"
+
+      # ------------------------------------------------------------
+      # GitHub Actions evidence artifact
+      # ------------------------------------------------------------
+      - name: Upload evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capstone-evidence-${{ github.run_id }}
+          path: evidence/
+          retention-days: 90
+
+      # ------------------------------------------------------------
+      # Final enforcement
+      #
+      # This makes a Conftest failure fail the GitHub job even though
+      # we used "|| true" earlier so that failed evidence could still
+      # be collected and signed.
+      # ------------------------------------------------------------
+      - name: Enforce policy gate
+        if: always()
+        run: |
+          test "${{ steps.conftest.outcome }}" = "success"
