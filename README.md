@@ -1,4 +1,4 @@
-# cgep-app-starter
+# cgep-app-starter - OLD README - SEE BELOW FOR ADDITION FOR THIS CAPSTONE
 
 > Patient Intake API for "Acme Health". The deliberately-flawed workload your **CGE-P capstone** wraps with GRC controls.
 
@@ -87,7 +87,46 @@ This repository extends the original `cgep-app-starter` with a security and comp
 
 The primary framework selected for this implementation is the **HIPAA Security Rule**.
 
-## What was added
+## What was added for this capstone by Tee Wei
+
+## Grader verification 
+
+This repository implements the CGE-P capstone using the **HIPAA Security Rule**. See [`WRITEUP.md`](WRITEUP.md) for implementation details and design decisions.
+
+Generate the Terraform plan
+
+From the repository root:
+
+```bash
+cd terraform
+terraform init
+terraform plan -out=tfplan
+terraform show -json tfplan > plan.json
+cd ..
+```
+
+From the repository root, run the Rego unit tests:
+
+```bash
+opa test ./policy
+```
+
+To evaluate a Terraform plan against the security policies using Conftest, first generate a plan in JSON format using the repository's Terraform configuration, then run:
+
+```bash
+conftest test terraform/plan.json --policy policy/ --all-namespaces
+```
+
+* **Policy enforcement:** The [`policy/`](policy/) directory contains seven Rego policies covering GAP-01, GAP-02, GAP-03, GAP-04, GAP-05, GAP-07, and GAP-08. OPA tests validate policy behavior, while Conftest evaluates the Terraform plan against these policies.
+
+* **CI demonstration:** Review the [GitHub Actions history](https://github.com/teewei2000/cgep-capstone/actions) for successful pipeline runs and the intentionally failing GAP-04 regression test. This demonstrates that the policy gate blocks a Terraform plan when S3 bucket versioning is disabled.
+
+* **OSCAL:** Review [`oscal/components/component-acme.json`](oscal/components/component-acme.json) and [`oscal/profiles/cge-p-minimum.json`](oscal/profiles/cge-p-minimum.json) for the machine-readable component and control profile. Validation was performed using OSCAL Trestle.
+
+* **Evidence integrity:** The evidence bundle for run `37212597897` is stored in `s3://cgep-capstone-evidence-497f6467/capstone/runs/37212597897/`, alongside its SHA-256 digest and Cosign signature bundle. (Note: The S3 evidence vault retains bundles from multiple CI runs, with each run's evidence stored under a separate run-specific prefix.)
+
+* **Documentation:** [`GAPS.md`](GAPS.md) documents the security gaps, [`FRAMEWORKS.md`](FRAMEWORKS.md) describes the framework mappings, and [`WRITEUP.md`](WRITEUP.md) explains the implementation and design trade-offs.
+
 
 ### Layer 1 — Terraform GRC baseline
 
@@ -145,7 +184,7 @@ The workflow is defined in:
 .github/workflows/capstone.yml
 ```
 
-The current workflow runs on **pull requests targeting `main`**.
+The workflow supports pull-request verification and, when the push trigger for main is enabled, execution after changes are pushed to main.
 
 It performs:
 
@@ -163,7 +202,7 @@ Cosign keyless signing
 S3 evidence vault upload
 ```
 
-Terraform Apply is currently disabled while the workflow is configured for PR-only verification.
+To satisfy the capstone requirement “Apply on merge to main,” the workflow is configured to trigger on pushes to main, including pull-request merges. Terraform Apply runs after the policy gate succeeds, applying the approved infrastructure changes. Because the workflow also runs on direct pushes to main, those pushes can trigger deployment as well.
 
 The repository history contains both:
 
@@ -212,6 +251,13 @@ The CI pipeline produces three evidence objects:
 evidence-<run>.tar.gz
 evidence-<run>.tar.gz.sha256
 evidence-<run>.tar.gz.sig.bundle
+```
+
+Example from GitHub Actions run 37212597897, referenced in the OSCAL evidence:
+```text
+capstone/runs/37212597897/evidence-37212597897-9eb7b54a0c07636ade0fd1a63baa77b0da672d79.tar.gz
+capstone/runs/37212597897/evidence-37212597897-9eb7b54a0c07636ade0fd1a63baa77b0da672d79.tar.gz.sha256
+capstone/runs/37212597897/evidence-37212597897-9eb7b54a0c07636ade0fd1a63baa77b0da672d79.tar.gz.sig.bundle
 ```
 
 The evidence vault uses:

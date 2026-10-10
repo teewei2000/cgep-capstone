@@ -35,9 +35,9 @@ HIPAA was selected as the primary framework because the scenario is a telehealth
 
 HIPAA does not provide an official OSCAL catalog in the starter project. The OSCAL implementation therefore uses the official NIST SP 800-53 Rev. 5 OSCAL catalog as the technical control vocabulary, while retaining the HIPAA control IDs in the implementation properties and descriptions. This avoids creating a custom catalog while maintaining traceability to the declared HIPAA requirements.
 
-GAP-06 was not remediated because its reserved concurrency, dead-letter queue and X-Ray recommendations do not have a direct HIPAA Security Rule mapping in the starter assessment. Also due to time constraint, the implementation scope was therefore kept focused on the documented HIPAA gaps rather than introducing additional controls without a declared framework requirement.
+GAP-06 was not remediated because its reserved concurrency, dead-letter queue and X-Ray recommendations do not have a direct HIPAA Security Rule mapping in the starter assessment. Given the capstone's scope, implementation focused on the seven selected gaps with documented framework mappings. GAP-06 therefore remains an acknowledged limitation rather than a remediated control.
 
-CloudTrail was implemented as a separate capstone baseline requirement with a dedicated multi-region trail, log file validation and a dedicated S3 bucket. The CloudTrail bucket uses SSE-S3 rather than the application CMK because the CMK requirement was scoped to the starter application's S3 and DynamoDB data stores and the evidence vault.
+CloudTrail was implemented as a separate capstone baseline requirement with a dedicated multi-region trail, log file validation and a dedicated S3 bucket. The CloudTrail bucket currently uses SSE-S3 rather than the application CMK. This was a deliberate scope decision: customer-managed-key encryption was applied to the starter application's S3 and DynamoDB data stores and to the evidence vault, but not to the CloudTrail bucket. SSE-S3 provides server-side encryption but does not provide the same customer-managed key control as SSE-KMS using a customer-managed key.
 
 ## Policy-as-code
 
@@ -54,10 +54,14 @@ Seven Rego policies were implemented, each corresponding to a documented gap:
 Each policy includes framework, control ID, severity, gap ID and remediation metadata and has a corresponding test fixture covering the expected compliant and non-compliant cases.
 
 The complete Conftest policy suite passes with 7/7 tests.
+For example:
+OPA unit tests: opa test ./policy — report the result from your latest run.
+Conftest policy verification: conftest verify --policy policy/ — 14 tests passed.
+Terraform plan policy gate: conftest test terraform/plan.json --policy policy/ --all-namespaces — 7 tests passed, with no warnings or failures.
 
 ## CI/CD compliance gate
 
-GitHub Actions executes the compliance workflow on pull requests and pushes to `main`.
+GitHub Actions runs policy verification on pull requests and executes the deployment workflow on pushes to main, including pull-request merges.
 
 The workflow performs:
 
